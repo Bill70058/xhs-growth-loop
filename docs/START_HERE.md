@@ -1,0 +1,44 @@
+# START HERE
+
+## 目标
+构建一个可持续运行的「小红书内容增长闭环」：
+1. 采集数据
+2. 分析表现
+3. 生成候选贴文
+4. 预览/发布
+5. 次日复盘并优化下一轮
+
+## 我现在已经有什么
+- 闭环脚手架目录：`xhs-growth-loop/`
+- 采集脚本：`scripts/01_collect.sh`
+- 分析脚本：`scripts/02_analyze.py`
+- 候选生成脚本：`scripts/03_generate_candidates.py`
+- 预览发布脚本：`scripts/04_publish_preview.sh`
+- 正式发布脚本：`scripts/05_publish.sh`
+- 串行入口：`scripts/run_daily_loop.sh`
+- 数据库：`data/growth.db`（已建表）
+- 供应商仓库：`vendors/Spider_XHS`、`vendors/XiaohongshuSkills`
+
+## 我下一步要做什么（最短路径）
+1. 确认隔离实例登录（`--port 9333`）
+2. 跑真实采集并确认 `rows > 0`
+3. 运行分析与候选生成
+4. 用预览发布进行人工审核（已验证可到 `READY_TO_PUBLISH`）
+5. 通过后再正式发布
+6. 建立 7 天复盘报告
+
+## 快速命令
+```bash
+cd "/Users/billlin/Documents/project/official website/paste-board-website/xhs-growth-loop"
+python3 vendors/XiaohongshuSkills/scripts/cdp_publish.py --account default --port 9333 check-login
+python3 vendors/XiaohongshuSkills/scripts/cdp_publish.py --account default --port 9333 content-data --csv-file data/raw/content_data_$(date +%F).csv
+python3 scripts/02_analyze.py
+python3 scripts/03_generate_candidates.py
+python3 vendors/XiaohongshuSkills/scripts/publish_pipeline.py --account default --port 9333 --preview --title-file data/published/tmp/title.txt --content-file data/published/tmp/content.txt --image-urls "https://picsum.photos/1200/1200"
+```
+
+## 如果是新聊天窗口
+直接让助手先阅读：
+- `docs/START_HERE.md`
+- `docs/CURRENT_STATUS.md`
+- `docs/NEXT_STEPS.md`
