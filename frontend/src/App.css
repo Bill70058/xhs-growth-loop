@@ -1,0 +1,133 @@
+:root {
+  --bg: #f4efe6;
+  --panel: #fffaf1;
+  --ink: #1b2926;
+  --muted: #5d6a66;
+  --brand: #bc4a2c;
+  --line: #e8dcc8;
+  --focus: #1f9d8a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Avenir Next', 'PingFang SC', 'Helvetica Neue', sans-serif;
+  background: radial-gradient(circle at top left, #fbe0bd 0%, var(--bg) 55%);
+  color: var(--ink);
+}
+
+.page { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; display: grid; gap: 14px; }
+.hero h1 { margin: 0; font-size: clamp(30px, 4vw, 46px); letter-spacing: 0.3px; line-height: 1.1; }
+.hero p { margin-top: 8px; color: var(--muted); }
+.hero-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(460px, 520px); gap: 14px; align-items: start; }
+.account-box { background: #fff; border: 1px solid #eadfcb; border-radius: 14px; padding: 12px; display: grid; gap: 8px; box-shadow: 0 6px 20px rgba(40, 38, 34, 0.06); }
+.account-box h3 { margin: 0; font-size: 15px; }
+.account-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.account-create {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 130px;
+  gap: 8px;
+  align-items: center;
+}
+.account-create .topic-input { min-width: 0; }
+.account-create .topic-clear {
+  white-space: nowrap;
+  min-height: 44px;
+  display: inline-grid;
+  place-items: center;
+}
+.profile-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.workflow { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+.wf-step { font-size: 12px; color: #6b5547; background: #f7e4d3; border: 1px solid #e5b997; border-radius: 999px; padding: 6px 10px; }
+
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; box-shadow: 0 10px 22px rgba(123, 97, 64, 0.08); }
+.card h2 { margin-top: 0; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.metric span { display: block; color: var(--muted); font-size: 13px; }
+.metric strong { font-size: 22px; line-height: 1.2; display: block; margin-top: 4px; }
+.metric-code {
+  display: block;
+  margin-top: 6px;
+  color: #72807b;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.step-dot { width: 24px; height: 24px; border-radius: 999px; background: #f1d1b6; color: #7f341f; display: inline-grid; place-items: center; font-size: 12px; font-weight: 700; border: 1px solid #e0ab86; }
+.main-stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.stage-left, .stage-right { display: grid; gap: 14px; align-content: start; }
+.stage-sticky { position: sticky; top: 14px; }
+.compact-toggle { margin-bottom: 10px; }
+
+.intent-form { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.intent-textarea { min-height: 92px; height: 140px; border: 1px solid #d8b18d; border-radius: 10px; padding: 10px 12px; font-size: 14px; background: #fff; resize: none; }
+.intent-actions { display: flex; justify-content: flex-end; }
+.engine-panel { display: grid; grid-template-columns: 1fr 1fr 0.5fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.engine-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #3d4a4a; background: #fff; border: 1px solid #eadfcb; border-radius: 10px; padding: 0 10px; }
+.intent-result { margin-top: 12px; }
+.intent-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.intent-item { background: #fff; border: 1px solid #eadfcb; border-radius: 12px; padding: 10px; display: grid; gap: 6px; }
+.intent-item small { color: #864d2c; }
+.intent-item span { color: #5d6969; font-size: 12px; }
+.cmd-box { margin-top: 10px; background: #2b2f33; color: #f2f5f7; border-radius: 10px; padding: 10px; overflow: auto; }
+.cmd-box code { white-space: nowrap; }
+.warn { color: #a32117; margin: 8px 0 0; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip { border: 1px solid #d8b18d; background: #fff; color: var(--ink); border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+.chip-active { background: var(--brand); color: #fff; border-color: var(--brand); }
+
+.topic-form { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.topic-form-actions { display: grid; grid-template-columns: 0.9fr 1fr 1fr; gap: 10px; }
+.topic-input, .topic-select { border: 1px solid #d8b18d; border-radius: 10px; padding: 10px 12px; font-size: 14px; background: #fff; }
+.topic-generate, .topic-clear { border-radius: 10px; border: 1px solid #d8b18d; padding: 10px 12px; cursor: pointer; }
+.topic-generate { background: var(--brand); color: #fff; border-color: var(--brand); }
+.topic-clear { background: #fff; color: var(--ink); }
+.topic-input:focus, .topic-select:focus, .intent-textarea:focus { outline: 2px solid rgba(31, 157, 138, 0.25); border-color: var(--focus); }
+.flow-panel { margin-top: 10px; display: grid; grid-template-columns: 1fr; gap: 10px; }
+.flow-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.primary-action { font-weight: 700; box-shadow: 0 6px 14px rgba(188, 74, 44, 0.26); }
+.secondary-action { background: #fff8f2; border-color: #e0c2a4; color: #7c5b45; font-weight: 600; }
+.secondary-action:hover { background: #fff1e4; }
+.flow-actions button:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+.flow-log { margin-top: 10px; background: #1f2428; color: #dfe8ee; border-radius: 10px; padding: 10px; white-space: pre-wrap; font-size: 12px; line-height: 1.5; max-height: 220px; overflow: auto; }
+
+.grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin-top: 0; align-items: start; }
+.list { display: grid; gap: 12px; max-height: 420px; overflow: auto; padding-right: 4px; }
+.item { background: #fff; border: 1px solid #eadfcb; border-radius: 12px; padding: 12px; }
+.item-clickable { cursor: pointer; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+.item-clickable:hover { border-color: #d6a173; box-shadow: 0 0 0 2px rgba(194, 77, 44, 0.08); }
+.item-selected { cursor: pointer; border-color: #c24d2c; box-shadow: 0 0 0 2px rgba(194, 77, 44, 0.15); }
+.item h3 { margin: 0 0 8px; font-size: 16px; }
+.item p { margin: 0 0 8px; color: #3d4a4a; line-height: 1.55; white-space: pre-line; }
+.item ul { margin: 0; padding-left: 18px; color: #3d4a4a; }
+.selected-badge { display: inline-block; margin-bottom: 6px; padding: 3px 8px; font-size: 11px; color: #fff; background: #b8482b; border-radius: 999px; }
+.content-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; overflow: hidden; }
+.content-full { white-space: pre-line; }
+.mini-link { border: 1px solid #d6dfe2; background: #f7fbfd; color: #255e71; padding: 4px 10px; margin-bottom: 6px; border-radius: 999px; cursor: pointer; font-size: 12px; }
+.mini-link:hover { border-color: #8bb1c3; background: #eef7fb; }
+
+.hint { margin: 4px 0 10px; color: var(--muted); }
+.word-cloud { display: flex; flex-wrap: wrap; gap: 14px 16px; align-items: center; min-height: 140px; line-height: 1.25; }
+.word { border: 0; background: transparent; color: #2d4a57; cursor: pointer; line-height: 1.05; transition: transform 0.12s ease; }
+.word:hover { transform: translateY(-1px); }
+.active-word { color: var(--brand); text-decoration: underline; text-underline-offset: 3px; font-weight: 700; }
+
+.loading { min-height: 100vh; display: grid; place-items: center; color: var(--muted); font-family: 'Avenir Next', 'PingFang SC', sans-serif; }
+
+@media (max-width: 900px) {
+  .hero-row { grid-template-columns: 1fr; }
+  .account-create { grid-template-columns: 1fr; }
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .main-stage { grid-template-columns: 1fr; }
+  .stage-sticky { position: static; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .topic-form-actions { grid-template-columns: 1fr; }
+  .flow-panel { grid-template-columns: 1fr; }
+  .flow-actions { grid-template-columns: 1fr; }
+  .intent-form { grid-template-columns: 1fr; }
+  .engine-panel { grid-template-columns: 1fr; }
+  .intent-grid { grid-template-columns: 1fr; }
+}

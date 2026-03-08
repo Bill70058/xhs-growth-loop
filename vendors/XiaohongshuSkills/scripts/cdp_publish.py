@@ -265,6 +265,23 @@ def _map_note_infos_to_content_rows(note_infos: list[dict[str, Any]]) -> list[di
     return rows
 
 
+def _extract_content_rows_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract content rows from possible list fields in content-data payload."""
+    if not isinstance(payload, dict):
+        return []
+
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        return []
+
+    for key in ("note_infos", "noteInfos", "notes", "list", "items", "records", "note_list", "noteList"):
+        value = data.get(key)
+        if isinstance(value, list):
+            return _map_note_infos_to_content_rows(value)
+
+    return []
+
+
 def _write_content_data_csv(csv_file: str, rows: list[dict[str, Any]]) -> str:
     """Write content rows to a UTF-8 CSV file and return absolute path."""
     abs_path = os.path.abspath(csv_file)
@@ -1630,8 +1647,12 @@ class XiaohongshuPublisher:
         self._send("Page.navigate", {"url": XHS_CONTENT_DATA_URL})
 
         request_url_by_id: dict[str, str] = {}
-        target_request_id = ""
         target_request_url = ""
+        selected_payload: dict[str, Any] | None = None
+        selected_rows: list[dict[str, Any]] = []
+        permission_status: Any = None
+        permission_display_more_data: Any = None
+        placeholder_hits = 0
         deadline = time.time() + 18
 
         while time.time() < deadline:
@@ -1658,6 +1679,26 @@ class XiaohongshuPublisher:
                     continue
 
                 request_url = request_url_by_id.get(request_id, "")
+
+                if "/api/galaxy/creator/datacenter/permission/query" in request_url:
+                    try:
+                        perm_body_result = self._send(
+                            "Network.getResponseBody", {"requestId": request_id}
+                        )
+                        perm_body_text = perm_body_result.get("body", "")
+                        if perm_body_result.get("base64Encoded"):
+                            perm_body_text = base64.b64decode(perm_body_text).decode(
+                                "utf-8", errors="replace"
+                            )
+                        perm_payload = json.loads(perm_body_text)
+                        perm_data = perm_payload.get("data") if isinstance(perm_payload, dict) else {}
+                        if isinstance(perm_data, dict):
+                            permission_status = perm_data.get("status")
+                            permission_display_more_data = perm_data.get("display_more_data")
+                    except Exception:
+                        pass
+                    continue
+
                 if XHS_CONTENT_DATA_API_PATH not in request_url:
                     continue
 
@@ -1668,37 +1709,41 @@ class XiaohongshuPublisher:
                         f"{status}, url={request_url}"
                     )
 
-                target_request_id = request_id
-                target_request_url = request_url
-                break
+                try:
+                    body_result = self._send("Network.getResponseBody", {"requestId": request_id})
+                    body_text = body_result.get("body", "")
+                    if body_result.get("base64Encoded"):
+                        body_text = base64.b64decode(body_text).decode("utf-8", errors="replace")
+                except CDPError:
+                    # Some responses are evicted quickly from the Network buffer.
+                    # Keep listening for the next content-data response.
+                    continue
 
-        if not target_request_id:
+                try:
+                    payload = json.loads(body_text)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(payload, dict):
+                    continue
+
+                rows = _extract_content_rows_from_payload(payload)
+                target_request_url = request_url
+                selected_payload = payload
+                selected_rows = rows
+
+                if rows:
+                    break
+
+                placeholder_hits += 1
+
+        if not target_request_url:
             raise CDPError(
                 "Timed out waiting for content data request. "
                 "Please open data-analysis page manually and retry."
             )
-
-        body_result = self._send("Network.getResponseBody", {"requestId": target_request_id})
-        body_text = body_result.get("body", "")
-        if body_result.get("base64Encoded"):
-            body_text = base64.b64decode(body_text).decode("utf-8", errors="replace")
-
-        try:
-            payload = json.loads(body_text)
-        except json.JSONDecodeError as e:
-            raise CDPError(
-                "Failed to decode content data API JSON: "
-                f"{e}; preview={body_text[:300]}"
-            ) from e
-
-        if not isinstance(payload, dict):
-            raise CDPError("Unexpected content data payload structure.")
-
-        data = payload.get("data")
-        note_infos = data.get("note_infos") if isinstance(data, dict) else []
-        if not isinstance(note_infos, list):
-            note_infos = []
-        rows = _map_note_infos_to_content_rows(note_infos)
+        payload = selected_payload if isinstance(selected_payload, dict) else {}
+        data = payload.get("data") if isinstance(payload, dict) else {}
+        rows = selected_rows
 
         query = parse_qs(urlparse(target_request_url).query)
         resolved_page_num = int((query.get("page_num") or ["1"])[0])
@@ -1726,6 +1771,9 @@ class XiaohongshuPublisher:
             "total": data.get("total") if isinstance(data, dict) else None,
             "count_returned": len(rows),
             "rows": rows,
+            "permission_status": permission_status,
+            "permission_display_more_data": permission_display_more_data,
+            "placeholder_hits": placeholder_hits,
         }
 
     # ------------------------------------------------------------------

@@ -1,20 +1,17 @@
 # NEXT STEPS
 
 ## P0（今天就做）
-1. 固化隔离实例执行口径（避免误用默认浏览器）：
-   - 启动隔离实例并固定端口 `9333`
-   - 采集与预览命令统一显式传 `--port 9333`
-2. 跑一次真实采集并确认非空：
-   - `python3 vendors/XiaohongshuSkills/scripts/cdp_publish.py --account default --port 9333 content-data --csv-file data/raw/content_data_$(date +%F).csv`
-3. 分析与候选生成：
-   - `python3 scripts/02_analyze.py`
-   - `python3 scripts/03_generate_candidates.py`
-4. 预览发布并人工审核（使用 9333）：`python3 vendors/XiaohongshuSkills/scripts/publish_pipeline.py --account default --port 9333 --preview ...`
-5. 把本次运行结果写入 `CURRENT_STATUS.md`（是否非空、是否到 `READY_TO_PUBLISH`）。
+1. 用前端跑一轮“意图 -> 选题 -> 草稿 -> 预览”闭环：
+   - 启动 `frontend` 与 `bridge`
+   - 在右上角确认账号，必要时新增并登录
+   - 点击候选贴文后触发“进入预览发布”
+2. 验证 `publish_records` 入库：
+   - 至少确认 1 条 `preview` 记录状态为 `READY_TO_PUBLISH` 或 `FAILED`
+3. 把本次运行结果写入 `CURRENT_STATUS.md`（账号、候选、预览状态、异常点）。
 
 ## P1（本周完成）
-1. 给 `scripts/01_collect.sh`、`scripts/04_publish_preview.sh`、`scripts/05_publish.sh` 增加 `XHS_CDP_PORT` 环境变量支持。
-2. 给 `publish_records` 补写入逻辑（预览/发布都入库：time、candidate_id、status、note_link）。
+1. 前端增加“一键触发市场采集”按钮（替代命令预览）。
+2. 增加账号状态巡检（右上角显示当前账号 creator/home 登录状态）。
 3. 增加失败重试与告警（采集失败、发布失败、空数据）。
 4. 将候选生成升级为“模板 + 历史高分特征”混合策略。
 
@@ -22,7 +19,7 @@
 1. 增加 A/B 机制：同主题多开头版本对比。
 2. 增加每周复盘报告（自动输出 top/bottom 内容特征）。
 3. 接入 OpenClaw 自动任务（日报、候选生成、周复盘）。
-4. 增加“账号状态巡检”任务（每日首次运行前检查 creator 登录是否失效）。
+4. 将前端本地规则解析替换为 OpenClaw 在线解析并沉淀提示模板。
 
 ## 完成判定
 - 每天至少稳定输出：

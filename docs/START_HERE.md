@@ -29,13 +29,21 @@
 
 ## 快速命令
 ```bash
-cd "/Users/billlin/Documents/project/official website/paste-board-website/xhs-growth-loop"
-python3 vendors/XiaohongshuSkills/scripts/cdp_publish.py --account default --port 9333 check-login
-python3 vendors/XiaohongshuSkills/scripts/cdp_publish.py --account default --port 9333 content-data --csv-file data/raw/content_data_$(date +%F).csv
-python3 scripts/02_analyze.py
-python3 scripts/03_generate_candidates.py
-python3 vendors/XiaohongshuSkills/scripts/publish_pipeline.py --account default --port 9333 --preview --title-file data/published/tmp/title.txt --content-file data/published/tmp/content.txt --image-urls "https://picsum.photos/1200/1200"
+cd "/Users/billlin/Documents/project/xhs-growth-loop"
+.venv/bin/python vendors/XiaohongshuSkills/scripts/cdp_publish.py --account default --port 9333 check-login
+bash scripts/01_collect.sh
+.venv/bin/python scripts/02_analyze.py
+.venv/bin/python scripts/03_generate_candidates.py
+bash scripts/04_publish_preview.sh
 ```
+
+## 前端入口（选题 + 多账号 + 预览触发）
+```bash
+cd "/Users/billlin/Documents/project/xhs-growth-loop/frontend"
+npm run dev:dashboard -- --host 127.0.0.1
+npm run bridge
+```
+打开：`http://127.0.0.1:5174/`
 
 ## 如果是新聊天窗口
 直接让助手先阅读：

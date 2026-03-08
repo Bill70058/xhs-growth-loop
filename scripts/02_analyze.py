@@ -43,6 +43,34 @@ def to_int(v):
         return 0
 
 
+def get_last_valid_stats(cur, today):
+    cur.execute(
+        """
+        SELECT
+          stat_date,
+          COUNT(*) AS rows_loaded,
+          COALESCE(SUM(exposure), 0) AS total_exposure,
+          COALESCE(SUM(likes + comments + collects + shares), 0) AS total_interaction
+        FROM post_metrics_daily
+        WHERE stat_date <> ?
+        GROUP BY stat_date
+        HAVING COUNT(*) > 0
+        ORDER BY stat_date DESC
+        LIMIT 1
+        """,
+        (today,),
+    )
+    row = cur.fetchone()
+    if not row:
+        return None
+    return {
+        "stat_date": row[0],
+        "rows_loaded": int(row[1] or 0),
+        "total_exposure": int(row[2] or 0),
+        "total_interaction": int(row[3] or 0),
+    }
+
+
 def main():
     env = load_env(ENV)
     data_dir = env.get("DATA_DIR", os.path.join(ROOT, "data"))
@@ -56,6 +84,9 @@ def main():
     csv_file = files[-1]
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
+
+    # Keep daily analyze idempotent for reruns on the same date.
+    cur.execute("DELETE FROM post_metrics_daily WHERE stat_date = ?", (today,))
 
     total_exposure = 0
     total_interaction = 0
@@ -88,6 +119,18 @@ def main():
 
     conn.commit()
 
+    own_data_status = "live_data"
+    own_data_reference_date = today
+    if rows_loaded == 0:
+        fallback = get_last_valid_stats(cur, today)
+        if fallback:
+            total_exposure = fallback["total_exposure"]
+            total_interaction = fallback["total_interaction"]
+            own_data_status = "empty_today_fallback_last_valid"
+            own_data_reference_date = fallback["stat_date"]
+        else:
+            own_data_status = "empty_today_no_fallback"
+
     interaction_rate = (total_interaction / total_exposure) if total_exposure else 0.0
     # Market-learning stream (keyword-based high performing feeds)
     market_dir = os.path.join(data_dir, "raw", "market", today)
@@ -113,6 +156,8 @@ def main():
         "date": today,
         "source_csv": csv_file,
         "rows_loaded": rows_loaded,
+        "own_data_status": own_data_status,
+        "own_data_reference_date": own_data_reference_date,
         "total_exposure": total_exposure,
         "total_interaction": total_interaction,
         "interaction_rate": round(interaction_rate, 6),

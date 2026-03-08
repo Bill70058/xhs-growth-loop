@@ -15,6 +15,10 @@ source "$ENV_FILE"
 XHS_CDP_PORT="${XHS_CDP_PORT:-9333}"
 LEARN_KEYWORDS="${LEARN_KEYWORDS:-跨境卖家学习,小白找工作,面试,小白学AI}"
 MARKET_TOP_N="${MARKET_TOP_N:-20}"
+PYTHON_BIN="${PYTHON_BIN:-$ROOT_DIR/.venv/bin/python}"
+if [[ ! -x "$PYTHON_BIN" ]]; then
+  PYTHON_BIN="python3"
+fi
 
 if [[ ! -d "$XHS_SKILLS_DIR" ]]; then
   echo "[collect:market] XHS_SKILLS_DIR not found: $XHS_SKILLS_DIR" >&2
@@ -36,7 +40,7 @@ for RAW_KW in "${KEYWORD_ARR[@]}"; do
   JSON_FILE="$OUT_DIR/${SAFE_KW}.json"
 
   CMD=(
-    python3 scripts/cdp_publish.py
+    "$PYTHON_BIN" scripts/cdp_publish.py
     --account "$XHS_ACCOUNT"
     --port "$XHS_CDP_PORT"
     search-feeds
@@ -52,7 +56,7 @@ for RAW_KW in "${KEYWORD_ARR[@]}"; do
 
   (cd "$XHS_SKILLS_DIR" && "${CMD[@]}") | tee "$RAW_LOG"
 
-  python3 - <<PY
+  "$PYTHON_BIN" - <<PY
 import json
 from pathlib import Path
 raw = Path(r"$RAW_LOG").read_text(encoding="utf-8", errors="ignore")

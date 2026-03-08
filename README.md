@@ -22,6 +22,7 @@
 - `config/.env.example`：环境变量模板
 - `data/`：采集、分析、候选、发布记录
 - `logs/`：任务日志
+- `frontend/`：React 前端控制台（意图解析、选题、词云、账号与预览触发）
 
 ## 2. 准备
 1. 复制环境变量模板：
@@ -48,10 +49,20 @@
 ## 4. 一键串行
 - `bash scripts/run_daily_loop.sh`
 
-## 5. OpenClaw 自动任务模板
+## 5. 前端控制台（独立线程）
+1. 启动前端：
+   - `cd frontend`
+   - `npm run dev:dashboard -- --host 127.0.0.1`
+2. 启动本地桥接服务（用于写候选、触发预览）：
+   - `npm run bridge`
+3. 打开：`http://127.0.0.1:5174/`
+
+详细操作见：`docs/FRONTEND_DASHBOARD.md`
+
+## 6. OpenClaw 自动任务模板
 见 `scripts/openclaw_task_templates.md`。
 
-## 6. 合规建议
+## 7. 合规建议
 - 先用自有账号数据闭环，不做大规模未授权抓取。
 - 发布先半自动（`--preview` + 人审），稳定后再自动化。
 - API Key 泄露后立即轮换。

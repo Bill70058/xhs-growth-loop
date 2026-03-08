@@ -16,6 +16,10 @@ XHS_CDP_PORT="${XHS_CDP_PORT:-9333}"
 CONTENT_PAGE_NUM="${CONTENT_PAGE_NUM:-1}"
 CONTENT_PAGE_SIZE="${CONTENT_PAGE_SIZE:-10}"
 CONTENT_NOTE_TYPE="${CONTENT_NOTE_TYPE:-0}"
+PYTHON_BIN="${PYTHON_BIN:-$ROOT_DIR/.venv/bin/python}"
+if [[ ! -x "$PYTHON_BIN" ]]; then
+  PYTHON_BIN="python3"
+fi
 
 mkdir -p "$DATA_DIR/raw" "$ROOT_DIR/logs"
 TODAY="$(date +%F)"
@@ -28,7 +32,7 @@ if [[ ! -d "$XHS_SKILLS_DIR" ]]; then
 fi
 
 CMD=(
-  python3 scripts/cdp_publish.py
+  "$PYTHON_BIN" scripts/cdp_publish.py
   --account "$XHS_ACCOUNT"
   --port "$XHS_CDP_PORT"
   content-data
