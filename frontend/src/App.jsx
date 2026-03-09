@@ -28,6 +28,15 @@ function prettyOwnDataStatus(status) {
   if (!s) return '未知'
   return s
 }
+function prettyArmStatus(status) {
+  const s = String(status || '')
+  if (s === 'generated') return '已生成'
+  if (s === 'selected') return '已选中'
+  if (s === 'ready_to_publish') return '待发布'
+  if (s === 'published') return '已发布'
+  if (s === 'failed') return '失败'
+  return s || '未知'
+}
 function wordColor(value, min, max) {
   if (max <= min) return 'hsl(198 45% 34%)'
   const r = (value - min) / (max - min)
@@ -157,6 +166,7 @@ function App() {
   const [accountMessage, setAccountMessage] = useState('')
   const [isSavingDrafts, setIsSavingDrafts] = useState(false)
   const [isRunningPreview, setIsRunningPreview] = useState(false)
+  const [isCollectingMarket, setIsCollectingMarket] = useState(false)
   const [flowMessage, setFlowMessage] = useState('')
   const [selectedCandidateIdx, setSelectedCandidateIdx] = useState(0)
   const [showAdvancedIntent, setShowAdvancedIntent] = useState(false)
@@ -216,6 +226,17 @@ function App() {
   const providerMeta = PROVIDERS[provider]
   const effectiveEndpoint = customEndpoint.trim() || providerMeta.endpoint
   const effectiveModel = customModel.trim() || providerMeta.model
+  const strategyLearning = data?.strategyLearning || data?.summary?.strategy_learning || { has_run: false, arms: [], status_breakdown: {} }
+  const experimentSync = data?.experimentSync || data?.summary?.experiment_sync || { linked_publish_records: 0 }
+  const rewardSources = experimentSync?.reward_sources || {}
+  const strategyArms = Array.isArray(strategyLearning.arms) ? strategyLearning.arms : []
+  const strategyBreakdown = strategyLearning.status_breakdown || {}
+  const policySummary = Array.isArray(strategyLearning.policy_summary) ? strategyLearning.policy_summary : []
+  const runtimeBridge = data?.runtimeBridge || { has_data: false, steps: [], retry_count: 0, failed_steps: 0 }
+  const runtimeSteps = Array.isArray(runtimeBridge.steps) ? runtimeBridge.steps : []
+  const autopilot = data?.autopilot || { exists: false, alive: false }
+  const autopilotTrace = Array.isArray(data?.autopilotTrace) ? data.autopilotTrace : []
+  const autopilotMilestones = Array.isArray(data?.autopilotMilestones) ? data.autopilotMilestones : []
 
   function buildCustomDrafts() {
     const seed = customTopic.trim()
@@ -317,6 +338,26 @@ function App() {
       setFlowMessage(`预览触发失败：${e.message}`)
     } finally {
       setIsRunningPreview(false)
+    }
+  }
+
+  async function collectMarketByIntent() {
+    if (!learnKeywords.length) return
+    setIsCollectingMarket(true)
+    setFlowMessage('')
+    try {
+      const resp = await fetch(`${bridgeBaseUrl}/api/collect-market`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keywords: learnKeywords }),
+      })
+      const payload = await resp.json()
+      if (!resp.ok || !payload.ok) throw new Error(payload.error || `HTTP ${resp.status}`)
+      setFlowMessage(`市场采集已触发：${learnKeywords.join(', ')}\n${payload.output || ''}`)
+    } catch (e) {
+      setFlowMessage(`市场采集失败：${e.message}`)
+    } finally {
+      setIsCollectingMarket(false)
     }
   }
 
@@ -424,6 +465,186 @@ function App() {
         <div className="card metric"><span>互动率</span><strong>{fmtPct(data.summary?.interaction_rate)}</strong></div>
       </section>
 
+      <section className="card">
+        <h2>策略实验看板</h2>
+        <div className="strategy-metrics">
+          <div className="strategy-metric">
+            <span>策略版本</span>
+            <strong>{strategyLearning.selection_policy || '-'}</strong>
+          </div>
+          <div className="strategy-metric">
+            <span>生成模式</span>
+            <strong>{strategyLearning.generation_mode || '-'}</strong>
+          </div>
+          <div className="strategy-metric">
+            <span>实验 Run</span>
+            <strong>{strategyLearning.run_id || '-'}</strong>
+          </div>
+          <div className="strategy-metric">
+            <span>已回流记录</span>
+            <strong>{experimentSync.linked_publish_records || 0}</strong>
+          </div>
+          <div className="strategy-metric">
+            <span>待归因样本</span>
+            <strong>{experimentSync?.reward_update?.pending || 0}</strong>
+          </div>
+          <div className="strategy-metric">
+            <span>当前选中候选</span>
+            <strong>{strategyLearning.selected_candidate_no || '-'}</strong>
+          </div>
+        </div>
+        <div className="strategy-metrics">
+          <div className="strategy-metric">
+            <span>Runtime 重试次数</span>
+            <strong>{runtimeBridge.retry_count || 0}</strong>
+          </div>
+          <div className="strategy-metric">
+            <span>Runtime 失败步骤</span>
+            <strong>{runtimeBridge.failed_steps || 0}</strong>
+          </div>
+          <div className="strategy-metric">
+            <span>Runtime 最近步骤</span>
+            <strong>{runtimeBridge?.latest?.step_id || '-'}</strong>
+          </div>
+          <div className="strategy-metric">
+            <span>Runtime 最近结果</span>
+            <strong>{runtimeBridge?.latest?.ok ? '成功' : (runtimeBridge?.latest ? '失败' : '-')}</strong>
+          </div>
+          <div className="strategy-metric">
+            <span>Runtime 决策动作</span>
+            <strong>{runtimeBridge?.latest?.decision?.action || '-'}</strong>
+          </div>
+          <div className="strategy-metric">
+            <span>Runtime 决策原因</span>
+            <strong>{runtimeBridge?.latest?.decision?.reason || '-'}</strong>
+          </div>
+        </div>
+        <div className="strategy-metrics">
+          <div className="strategy-metric">
+            <span>Autopilot 状态</span>
+            <strong>{autopilot.exists ? (autopilot.alive ? '运行中' : '疑似停止') : '未检测到'}</strong>
+          </div>
+          <div className="strategy-metric">
+            <span>Autopilot 周期</span>
+            <strong>{autopilot.cycle || '-'}</strong>
+          </div>
+          <div className="strategy-metric">
+            <span>Autopilot 阶段</span>
+            <strong>{autopilot.state || '-'}</strong>
+          </div>
+          <div className="strategy-metric">
+            <span>Autopilot 延迟(s)</span>
+            <strong>{autopilot.age_seconds ?? '-'}</strong>
+          </div>
+          <div className="strategy-metric">
+            <span>Autopilot 原因</span>
+            <strong>{autopilot.reason || '-'}</strong>
+          </div>
+          <div className="strategy-metric">
+            <span>Autopilot 心跳</span>
+            <strong>{autopilot.exists ? '已上报' : '无'}</strong>
+          </div>
+        </div>
+        {strategyLearning.openclaw_enabled && (
+          <p className="hint">
+            OpenClaw：已启用
+            {strategyLearning.openclaw_error ? `（本轮已回退：${strategyLearning.openclaw_error}）` : '（本轮调用成功）'}
+          </p>
+        )}
+        <div className="strategy-status-row">
+          {Object.keys(strategyBreakdown).length === 0 && <span className="hint">暂无状态分布</span>}
+          {Object.entries(strategyBreakdown).map(([k, v]) => (
+            <span key={k} className="status-chip">{prettyArmStatus(k)}: {v}</span>
+          ))}
+        </div>
+        <div className="strategy-status-row">
+          {Object.keys(rewardSources).length === 0 && <span className="hint">暂无奖励归因来源</span>}
+          {Object.entries(rewardSources).map(([k, v]) => (
+            <span key={k} className="status-chip">{k}: {v}</span>
+          ))}
+        </div>
+        <div className="strategy-arms">
+          {strategyArms.length === 0 && <p className="hint">暂无实验 Arm 数据</p>}
+          {strategyArms.map((arm) => (
+            <div key={`${arm.candidate_no}-${arm.topic}`} className="strategy-arm-item">
+              <div className="strategy-arm-head">
+                <strong>候选 #{arm.candidate_no}</strong>
+                <span className="status-chip">{prettyArmStatus(arm.status)}</span>
+              </div>
+              <p>topic: {arm.topic || '-'}</p>
+              <p>hook: {arm.hook_type || '-'} · structure: {arm.structure_type || '-'} · cta: {arm.cta_type || '-'}</p>
+              <p>score: {Number(arm.score || 0).toFixed(4)}</p>
+            </div>
+          ))}
+        </div>
+        {policySummary.length > 0 && (
+          <div className="policy-summary">
+            <h3>策略学习统计（Bandit）</h3>
+            <div className="policy-grid">
+              {policySummary.map((row) => (
+                <div key={row.arm_key} className="policy-item">
+                  <strong>{row.arm_key}</strong>
+                  <p>pulls: {row.pulls} · wins: {row.wins}</p>
+                  <p>alpha: {Number(row.alpha || 0).toFixed(2)} · beta: {Number(row.beta || 0).toFixed(2)}</p>
+                  <p>last_reward: {row.last_reward == null ? '-' : Number(row.last_reward).toFixed(3)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {runtimeSteps.length > 0 && (
+          <div className="policy-summary">
+            <h3>Runtime 执行轨迹</h3>
+            <div className="policy-grid">
+              {runtimeSteps.map((row) => (
+                <div key={row.step_id} className="policy-item">
+                  <strong>{row.step_id}</strong>
+                  <p>attempts: {row.attempts} · ok: {row.ok ? 'true' : 'false'}</p>
+                  <p>returncode: {row.returncode} · action: {row.action || '-'}</p>
+                  <p>reason: {row.reason || '-'}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <details className="autopilot-trace">
+          <summary>Autopilot 实时轨迹（折叠）</summary>
+          {autopilotTrace.length === 0 && <p className="hint">暂无轨迹数据</p>}
+          {autopilotTrace.length > 0 && (
+            <div className="autopilot-trace-list">
+              {autopilotTrace.slice().reverse().map((row, idx) => (
+                <div key={`${row.kind}-${row.cycle}-${row.step_id || idx}`} className="autopilot-trace-item">
+                  {row.kind === 'decision' ? (
+                    <p>
+                      [cycle {row.cycle}] decision: reason={row.reason || '-'} | plan={row.plan_len} | continue={String(row.continue_flag)} | sleep={row.sleep_seconds}s
+                    </p>
+                  ) : (
+                    <p>
+                      [cycle {row.cycle}] step: {row.step_id || '-'} | rc={row.rc} | cmd={row.cmd || '-'}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </details>
+        <details className="autopilot-trace">
+          <summary>每轮里程碑与结论（折叠）</summary>
+          {autopilotMilestones.length === 0 && <p className="hint">暂无里程碑数据（重启 autopilot 后会持续生成）</p>}
+          {autopilotMilestones.length > 0 && (
+            <div className="autopilot-trace-list">
+              {autopilotMilestones.slice().reverse().map((row, idx) => (
+                <div key={`ms-${row.cycle}-${idx}`} className="autopilot-trace-item">
+                  <p>[cycle {row.cycle}] 结论：{row.conclusion || '-'}</p>
+                  <p>里程碑：{Array.isArray(row.milestones) ? row.milestones.join('；') : '-'}</p>
+                  <p>变化：run_id {row?.base?.run_id ?? '-'} {'->'} {row?.after?.run_id ?? '-'} | score {row?.base?.score ?? '-'} {'->'} {row?.after?.score ?? '-'} | pending {row?.base?.pending_reward ?? '-'} {'->'} {row?.after?.pending_reward ?? '-'}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </details>
+      </section>
+
       <section className="main-stage">
         <div className="stage-left">
           <section className="card">
@@ -474,6 +695,11 @@ function App() {
                   ))}
                 </div>
                 <div className="cmd-box"><code>{`LEARN_KEYWORDS="${learnKeywords.join(',')}" bash scripts/01_collect_market.sh`}</code></div>
+                <div className="intent-actions-inline">
+                  <button className="topic-clear" onClick={collectMarketByIntent} disabled={isCollectingMarket || !learnKeywords.length}>
+                    {isCollectingMarket ? '采集中...' : '一键市场采集'}
+                  </button>
+                </div>
               </div>
             )}
           </section>

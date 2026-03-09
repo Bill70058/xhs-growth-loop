@@ -147,6 +147,25 @@ function runPreview(account) {
   })
 }
 
+function runCollectMarket(learnKeywords) {
+  return new Promise((resolve) => {
+    const env = {
+      ...process.env,
+    }
+    if (learnKeywords) {
+      env.LEARN_KEYWORDS = learnKeywords
+    }
+    execFile('/bin/bash', ['scripts/01_collect_market.sh'], { cwd: root, env }, (error, stdout, stderr) => {
+      resolve({
+        ok: !error,
+        code: error?.code ?? 0,
+        stdout: String(stdout || ''),
+        stderr: String(stderr || ''),
+      })
+    })
+  })
+}
+
 const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') {
     send(res, 200, { ok: true })
@@ -190,6 +209,25 @@ const server = http.createServer(async (req, res) => {
         ok: result.ok,
         code: result.code,
         account: selectedAccount,
+        output: `${result.stdout}\n${result.stderr}`.slice(-4000),
+      })
+    } catch (e) {
+      return send(res, 500, { ok: false, error: e.message })
+    }
+  }
+
+  if (req.method === 'POST' && req.url === '/api/collect-market') {
+    try {
+      const body = await readJson(req)
+      const keywords = Array.isArray(body?.keywords)
+        ? body.keywords.map((x) => String(x || '').trim()).filter(Boolean)
+        : []
+      const learnKeywords = keywords.join(',')
+      const result = await runCollectMarket(learnKeywords)
+      return send(res, result.ok ? 200 : 500, {
+        ok: result.ok,
+        code: result.code,
+        keywords,
         output: `${result.stdout}\n${result.stderr}`.slice(-4000),
       })
     } catch (e) {

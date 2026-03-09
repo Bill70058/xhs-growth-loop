@@ -16,6 +16,8 @@
 - 预览发布脚本：`scripts/04_publish_preview.sh`
 - 正式发布脚本：`scripts/05_publish.sh`
 - 串行入口：`scripts/run_daily_loop.sh`
+- Runtime 自执行桥：`scripts/openclaw_runtime_bridge.py`
+- 不停机执行器：`scripts/openclaw_autopilot.py`
 - 数据库：`data/growth.db`（已建表）
 - 供应商仓库：`vendors/Spider_XHS`、`vendors/XiaohongshuSkills`
 
@@ -35,6 +37,8 @@ bash scripts/01_collect.sh
 .venv/bin/python scripts/02_analyze.py
 .venv/bin/python scripts/03_generate_candidates.py
 bash scripts/04_publish_preview.sh
+bash scripts/run_openclaw_generate.sh
+bash scripts/start_autopilot.sh
 ```
 
 ## 前端入口（选题 + 多账号 + 预览触发）
@@ -50,3 +54,7 @@ npm run bridge
 - `docs/START_HERE.md`
 - `docs/CURRENT_STATUS.md`
 - `docs/NEXT_STEPS.md`
+- `docs/MVP_TODO.md`
+- `docs/STRATEGY_LEARNING_AB.md`
+- `docs/EXECUTION_GAPS.md`
+- `docs/VENDOR_PATCHES.md`

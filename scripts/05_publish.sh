@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT_DIR="$(cd "${0%/*}/.." && pwd)"
 ENV_FILE="$ROOT_DIR/config/.env"
 
 if [[ ! -f "$ENV_FILE" ]]; then
@@ -17,7 +18,7 @@ fi
 XHS_CDP_PORT="${XHS_CDP_PORT:-9333}"
 PYTHON_BIN="${PYTHON_BIN:-$ROOT_DIR/.venv/bin/python}"
 if [[ ! -x "$PYTHON_BIN" ]]; then
-  PYTHON_BIN="python3"
+  PYTHON_BIN="/usr/bin/python3"
 fi
 
 LATEST_JSON="$(ls -1t "$DATA_DIR"/candidates/candidates_*.json 2>/dev/null | head -n1 || true)"
@@ -35,9 +36,19 @@ CONTENT_FILE="$TMP_DIR/content.txt"
 import json
 f = "$LATEST_JSON"
 with open(f, 'r', encoding='utf-8') as fp:
-    c = json.load(fp)[0]
-open("$TITLE_FILE", "w", encoding="utf-8").write(c["title"].strip())
-open("$CONTENT_FILE", "w", encoding="utf-8").write(c["content"].strip())
+    arr = json.load(fp)
+if not isinstance(arr, list) or not arr:
+    raise SystemExit("candidates json is empty")
+chosen = None
+for c in arr:
+    if isinstance(c, dict) and c.get("selected") is True:
+        chosen = c
+        break
+if chosen is None:
+    arr = sorted(arr, key=lambda x: float((x or {}).get("score", 0) or 0), reverse=True)
+    chosen = arr[0]
+open("$TITLE_FILE", "w", encoding="utf-8").write(chosen["title"].strip())
+open("$CONTENT_FILE", "w", encoding="utf-8").write(chosen["content"].strip())
 PY
 
 cd "$XHS_SKILLS_DIR"
@@ -75,6 +86,41 @@ m = re.search(r"Note published at:\\s*(\\S+)", raw)
 print(m.group(1) if m else "")
 PY
 )"
+  NOTE_ID="$("$PYTHON_BIN" - <<PY
+import re
+from urllib.parse import parse_qs, urlparse
+from pathlib import Path
+note_link = r"$NOTE_LINK".strip()
+raw = Path(r"$RUN_LOG").read_text(encoding="utf-8", errors="ignore")
+note_id = ""
+if note_link:
+    try:
+        u = urlparse(note_link)
+        q = parse_qs(u.query or "")
+        for key in ("note_id", "noteId", "id"):
+            vals = q.get(key) or []
+            if vals and str(vals[0]).strip():
+                note_id = str(vals[0]).strip()
+                break
+        if not note_id:
+            m = re.search(r"/(?:explore|discovery/item|note)/([0-9A-Za-z_-]{8,64})", u.path or "")
+            if m:
+                note_id = m.group(1)
+    except Exception:
+        pass
+if not note_id:
+    for p in (
+        r'"note_id"\\s*:\\s*"([0-9A-Za-z_-]{8,64})"',
+        r'"noteId"\\s*:\\s*"([0-9A-Za-z_-]{8,64})"',
+        r'"post_id"\\s*:\\s*"([0-9A-Za-z_-]{8,64})"',
+    ):
+        m = re.search(p, raw)
+        if m:
+            note_id = m.group(1)
+            break
+print(note_id)
+PY
+)"
 
   CANDIDATE_ID="$("$PYTHON_BIN" - <<PY
 import json, sqlite3
@@ -84,9 +130,20 @@ if not db.exists():
     print("")
     raise SystemExit(0)
 with open(r"$LATEST_JSON", "r", encoding="utf-8") as f:
-    first = json.load(f)[0]
+    arr = json.load(f)
+if not isinstance(arr, list) or not arr:
+    print("")
+    raise SystemExit(0)
+chosen = None
+for c in arr:
+    if isinstance(c, dict) and c.get("selected") is True:
+        chosen = c
+        break
+if chosen is None:
+    arr = sorted(arr, key=lambda x: float((x or {}).get("score", 0) or 0), reverse=True)
+    chosen = arr[0]
 batch_date = Path(r"$LATEST_JSON").stem.replace("candidates_", "")
-candidate_no = int(first.get("candidate_no", 1))
+candidate_no = int(chosen.get("candidate_no", 1))
 conn = sqlite3.connect(str(db))
 cur = conn.cursor()
 cur.execute(
@@ -109,15 +166,20 @@ if not db.exists():
 raw = Path(r"$RUN_LOG").read_text(encoding="utf-8", errors="ignore")
 conn = sqlite3.connect(str(db))
 cur = conn.cursor()
+cur.execute("PRAGMA table_info(publish_records)")
+cols = {r[1] for r in cur.fetchall()}
+if "note_id" not in cols:
+    cur.execute("ALTER TABLE publish_records ADD COLUMN note_id TEXT")
 cur.execute(
     """
-    INSERT INTO publish_records (publish_date, candidate_id, publish_mode, note_link, status, raw_result)
-    VALUES (date('now'), ?, ?, ?, ?, ?)
+    INSERT INTO publish_records (publish_date, candidate_id, publish_mode, note_link, note_id, status, raw_result)
+    VALUES (date('now'), ?, ?, ?, ?, ?, ?)
     """,
     (
         int(r"$CANDIDATE_ID") if r"$CANDIDATE_ID".strip() else None,
         "publish",
         r"$NOTE_LINK".strip() or None,
+        r"$NOTE_ID".strip() or None,
         r"$STATUS",
         raw,
     ),

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT_DIR="$(cd "${0%/*}/.." && pwd)"
 ENV_FILE="$ROOT_DIR/config/.env"
 
 if [[ ! -f "$ENV_FILE" ]]; then
@@ -15,9 +16,10 @@ source "$ENV_FILE"
 XHS_CDP_PORT="${XHS_CDP_PORT:-9333}"
 LEARN_KEYWORDS="${LEARN_KEYWORDS:-跨境卖家学习,小白找工作,面试,小白学AI}"
 MARKET_TOP_N="${MARKET_TOP_N:-20}"
+COLLECT_RETRY_MAX="${COLLECT_RETRY_MAX:-2}"
 PYTHON_BIN="${PYTHON_BIN:-$ROOT_DIR/.venv/bin/python}"
 if [[ ! -x "$PYTHON_BIN" ]]; then
-  PYTHON_BIN="python3"
+  PYTHON_BIN="/usr/bin/python3"
 fi
 
 if [[ ! -d "$XHS_SKILLS_DIR" ]]; then
@@ -54,7 +56,19 @@ for RAW_KW in "${KEYWORD_ARR[@]}"; do
     continue
   fi
 
-  (cd "$XHS_SKILLS_DIR" && "${CMD[@]}") | tee "$RAW_LOG"
+  attempt=0
+  while true; do
+    if (cd "$XHS_SKILLS_DIR" && "${CMD[@]}") | tee "$RAW_LOG"; then
+      break
+    fi
+    attempt=$((attempt + 1))
+    if [[ "$attempt" -gt "$COLLECT_RETRY_MAX" ]]; then
+      echo "[collect:market] keyword=$KW failed after retries=$COLLECT_RETRY_MAX" >&2
+      break
+    fi
+    echo "[collect:market] keyword=$KW retry $attempt/$COLLECT_RETRY_MAX ..."
+    /bin/sleep "$attempt"
+  done
 
   "$PYTHON_BIN" - <<PY
 import json
